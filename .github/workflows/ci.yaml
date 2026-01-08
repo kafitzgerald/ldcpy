@@ -2,18 +2,18 @@ name: CI
 on:
   push:
     branches:
-      - "*"
+      - main
   pull_request:
-    branches:
-      - "*"
   schedule:
     - cron: "0 0 * * *" # Daily “At 00:00” UTC
   workflow_dispatch: # allows you to trigger the workflow run manually
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
-    if: |
-      github.repository == 'NCAR/ldcpy'
     name: Build (${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     defaults:
@@ -23,28 +23,25 @@ jobs:
       fail-fast: false
       matrix:
         os: ["ubuntu-latest"]
-        #        python-version: ['3.7', '3.8', '3.9']
         python-version: ["3.10", "3.11", "3.12"]
     steps:
-      - name: Cancel previous runs
-        uses: styfle/cancel-workflow-action@0.12.1
-        with:
-          access_token: ${{ github.token }}
+      - name: checkout
       - uses: actions/checkout@v4
-      - uses: mamba-org/setup-micromamba@v2
+
+      - name: environment setup
+      - uses: mamba-org/setup-micromamba@0dea6379afdaffa5d528b3d1dabc45da37f443fc # v2
         with:
-          channels: conda-forge
           environment-file: ci/environment.yml
-          activate-environment: ldcpy
+          create-args: >-
+            python=${{matrix.python-version}}
 
       - name: Install ldcpy
         run: |
-          conda install ldcpy
-          conda list
+          python -m pip install --no-deps -e .
 
       - name: Run Tests
         run: |
-          pytest --cov=./ --cov-report=xml
+          python -m pytest --cov=./ --cov-report=xml
 
       - name: Upload code coverage to Codecov
         uses: codecov/codecov-action@v5.4.0
@@ -54,54 +51,6 @@ jobs:
           env_vars: OS,PYTHON
           name: codecov-umbrella
           fail_ci_if_error: false
-
-  #  build:
-  #    if: |
-  #      github.repository == 'NCAR/ldcpy'
-  #    name: Build (${{ matrix.python-version }}, ${{ matrix.os }})
-  #    runs-on: ${{ matrix.os }}
-  #    defaults:
-  #      run:
-  #        shell: bash -l {0}
-  #    strategy:
-  #      fail-fast: false
-  #      matrix:
-  #        os: ['ubuntu-latest']
-  #        #        python-version: ['3.7', '3.8', '3.9']
-  #        python-version: ['3.10', '3.11', '3.12']
-  #    steps:
-  #      - name: Cancel previous runs
-  #        uses: styfle/cancel-workflow-action@0.12.1
-  #        with:
-  #          access_token: ${{ github.token }}
-  #      - uses: actions/checkout@v4
-  #      - uses: conda-incubator/setup-miniconda@v3
-  #        with:
-  #          channels: conda-forge
-  #          channel-priority: strict
-  #          mamba-version: '*'
-  #          activate-environment: ldcpy # Defined in ci/environment.yml
-  #          auto-update-conda: false
-  #          python-version: ${{ matrix.python-version }}
-  #          environment-file: ci/environment.yml
-  #
-  #      - name: Install ldcpy
-  #        run: |
-  #          conda install ldcpy
-  #          conda list
-  #
-  #      - name: Run Tests
-  #        run: |
-  #          pytest --cov=./ --cov-report=xml
-  #
-  #      - name: Upload code coverage to Codecov
-  #        uses: codecov/codecov-action@v5.4.0
-  #        with:
-  #          file: ./coverage.xml
-  #          flags: unittests
-  #          env_vars: OS,PYTHON
-  #          name: codecov-umbrella
-  #          fail_ci_if_error: false
 
   upstream-dev:
     if: |
