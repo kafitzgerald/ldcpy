@@ -26,10 +26,10 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
       - name: checkout
-      - uses: actions/checkout@v4
+        uses: actions/checkout@v4
 
       - name: environment setup
-      - uses: mamba-org/setup-micromamba@0dea6379afdaffa5d528b3d1dabc45da37f443fc # v2
+        uses: mamba-org/setup-micromamba@0dea6379afdaffa5d528b3d1dabc45da37f443fc # v2
         with:
           environment-file: ci/environment.yml
           create-args: >-
